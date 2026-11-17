@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f4f2ed"><title>知行圖書館｜智慧座位預約</title>
+<link rel="stylesheet" href="./style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./config.js"></script><script defer src="./app.js"></script>
+</head>
+<body><header class="top"><div><div class="eyebrow">CAMPUS LIBRARY · SMART SEATING</div><strong>知行圖書館</strong><span class="sub">智慧座位管理系統</span></div><div id="account" class="account"><span id="user-label">尚未登入</span><button id="auth-open" class="btn light">登入 / 註冊</button><button id="logout" class="btn light hidden">登出</button></div></header>
+<main><section class="intro"><div><div class="eyebrow">FIND YOUR FOCUS</div><h1>找到適合你的<br>下一個專注角落。</h1><p>瀏覽全館座位、即時查看預約狀態，選擇最適合的自習空間。</p></div><div class="intro-stat"><b id="available-count">—</b><span>目前可預約席位</span></div></section>
+<div id="notice" class="notice hidden" role="status"></div>
+<nav class="tabs"><button class="tab active" data-view="seats">座位總覽</button><button class="tab" data-view="records">我的預約</button><button class="tab" data-view="admin" id="admin-tab" hidden>館員管理</button></nav>
+<section id="seats-view"><div class="toolbar"><div><h2>選擇座位</h2><p>座位狀態由資料庫即時同步；點選可預約的座位查看詳情。</p></div><div class="filters"><input id="seat-search" placeholder="搜尋座位編號"><select id="space-filter"><option value="all">全部空間</option><option value="pavilion">晨光木質靜讀室</option><option value="atrium">玻璃中庭協作廳</option><option value="loft">空中夾層研究區</option></select><select id="date-filter"></select><select id="slot-filter"><option value="morning">08:00–12:00 上午</option><option value="afternoon">13:00–17:00 下午</option><option value="evening">17:30–21:30 夜間</option></select></div></div>
+<div class="legend"><span><i class="dot free"></i>可預約</span><span><i class="dot booked"></i>已預約</span><span><i class="dot locked"></i>維護中</span></div><div id="spaces" class="spaces"><div class="loading">正在載入座位資料…</div></div></section>
+<section id="records-view" class="hidden"><div class="toolbar"><div><h2>我的預約</h2><p>查看及取消尚未開始的預約。</p></div></div><div id="my-records" class="records"></div></section>
+<section id="admin-view" class="hidden"><div class="toolbar"><div><h2>館員管理</h2><p>僅具備管理員權限的帳號可執行維護鎖定與回報處理。</p></div></div><div id="admin-content"></div></section>
+<footer>知行圖書館智慧座位系統 <span>資料服務：Supabase</span></footer></main>
+<dialog id="auth-dialog"><form method="dialog" class="dialog-x"><button aria-label="關閉">×</button></form><div class="eyebrow">WELCOME BACK</div><h2 id="auth-title">登入帳號</h2><form id="auth-form"><label>電子郵件<input id="email" type="email" autocomplete="email" required></label><label>密碼<input id="password" type="password" minlength="6" autocomplete="current-password" required></label><button id="auth-submit" class="btn primary wide">登入</button></form><p class="switch-auth"><span id="auth-switch-text">還沒有帳號？</span> <button id="auth-switch" class="link">建立帳號</button></p><p class="muted small">註冊後請依 Supabase Auth 設定完成電子郵件驗證（若已啟用）。</p></dialog>
+<dialog id="seat-dialog"><form method="dialog" class="dialog-x"><button aria-label="關閉">×</button></form><div id="seat-detail"></div></dialog>
+</body></html>
