@@ -1,123 +1,122 @@
-# 知行圖書館智慧座位系統（GitHub Pages + Supabase）
+# PSST — 北科圖書館智慧座位系統（原生JS完整場景移植版）
 
-本版本將原始 Google AI Studio / React + Vite + Tailwind 專案改為**原生 HTML、CSS、JavaScript**。前端不需 npm、不需建置，`index.html` 位於專案根目錄，可直接由 GitHub Pages 發布。資料與帳號由 Supabase 提供。
+以提供的 `PSStestaistudiov2-main.zip`（AI Studio / React版）為場景、座位邏輯與介面功能基準，重新製作**原生HTML + CSS + JavaScript**版本。**不需React、不需Vite、不需npm、不需打包建置。** 直接放到GitHub Pages的儲存庫根目錄即可部署。原始Three.js程序化建模程式（建築、桌椅、人物、背包、書籍、攝影機視野）已轉譯成ES module，沒有拿上一版平面座位表取代。
 
-## 1. 專案內容
+> 執行依賴瀏覽器WebGL與網路CDN載入Three.js；如無WebGL或無法存取Three.js CDN，會改成可點選的2D座位平面備援。雲端功能需要Supabase URL與Publishable Key；未設定時可直接使用完整情境展示模式。
 
-- `index.html`：網站入口。
-- `style.css`、`app.js`：原生前端介面與功能。
-- `config.js`：唯一前端設定檔，填入 Supabase URL 與 Publishable Key。
-- `setup.sql`：資料表、RLS、觸發器、RPC 函式、Realtime 設定及 48 個初始席位。
-- `README.md`：本部署說明。
+## 1. 檔案說明
 
-## 2. 建立 Supabase 專案
+| 檔案 | 用途 |
+|---|---|
+| `index.html` | 入口、UI面板、外部ESM import map |
+| `style.css` | 原版淺暖灰背景、白色卡片、極簡UI、RWD |
+| `js/scene.js` | 從原版`Scene25D.tsx`轉譯：3D幾何、材質、相機、圖層、物件、raycast、狀態同步 |
+| `js/data.js` | 從原版`mockLibraryData.ts`轉譯：**12 / 16 / 20 = 48個座位**與各座標設備 |
+| `js/logic.js` | 從原版`seatLogic.ts`轉譯：狀態判斷、篩選、推薦評分 |
+| `js/app.js` | 無React之互動介面、情境、登入、預約、館員及Supabase對接 |
+| `config.js` | 可公開的Supabase連線設定 |
+| `setup.sql` | **新版**資料庫、RLS、RPC、48席種子、Realtime事件 |
+| `.nojekyll` | GitHub Pages直接發布靜態檔 |
+| `docs/` | 來自原版的場景／資料／推薦邏輯原始TSX/TS檔，僅供對照，不參與執行 |
 
-1. 登入 [Supabase](https://supabase.com/) 並建立一個專案。
-2. 進入 **Project Settings → API**（部分介面顯示 API Keys）。
-3. 複製 **Project URL** 及 **Publishable key**。只使用 Publishable key；不可將 `secret` 或 `service_role` key 放入前端。
-4. 在下載的專案中以 GitHub 網頁介面或其他文字編輯器打開 `config.js`，填入兩個值：
+## 2. 不用Supabase，直接試玩
+
+把檔案解壓縮至同一資料夾。由於程式使用ES modules，建議在該資料夾執行本機HTTP伺服器（Python範例）：
+
+```bash
+python -m http.server 8000
+```
+
+用瀏覽器開啟`http://localhost:8000/`；或直接先上傳GitHub Pages，**不填`config.js`就能使用本機情境展示模式**。正式網址與外部CDN都需要網路。直接以`file://`雙擊開啟可能受瀏覽器ESM跨來源限制，不建議。
+
+操作路徑：
+
+1. 上方切換三個自習空間：晨光木質靜讀室12席、玻璃中庭協作廳16席、星空階梯沉浸閣20席。
+2. Three.js場景可拖曳旋轉、縮放、點選座位，切換等角／剖面／俯視及狀態／環境／攝影機三圖層。
+3. 底部依日期、時段、設備、僅看空位、座位搜尋篩選；「動態智慧找位」選出符合條件座位及替代推薦。
+4. 點選座位可預約／退訂／報到／暫離／返回，測試人物／書包／書籍偵測模擬、回報異常、換位、館員維護鎖定。
+5. 點「情境模擬」：無預約占用、回報與一鍵換位、暫離保留、重置基準。
+6. 「我的預約與追蹤」可看預約、回報進度及原版示範歷史；「館員監控台」含狀態統計、異常工單、座位篩選及模擬偵測控制。
+
+展示模式的預約、館員身份、攝影機偵測都是**本機演示資料**，刷新頁面會還原，不會連線真實攝影機，也不會跨裝置同步。
+
+## 3. 連接Supabase：需要修改舊版資料庫
+
+**這次Supabase確實需要改寫。**舊版`PSStest04-main.zip`中的`setup.sql`建立的是三區各16席、共48席，與AI Studio原版的12 / 16 / 20不同；舊版`seats.id`為UUID，但這版用原始席位代碼（`P-01`等）做主鍵，以保留2.5D模型的位置與狀態對應。新版本也加入`vision`模擬狀態、報到／暫離、完整回報進度及原子換位。
+
+**強烈建議開新的Supabase專案執行本ZIP的`setup.sql`。**不要在已有正式資料的舊專案直接執行：資料表結構不相容。若要沿用舊專案的真實預約／學生資料，請先備份並規劃主鍵對應遷移，不可以直接覆蓋或刪表。
+
+在新Supabase專案：
+
+1. 建立專案，進入SQL Editor。
+2. 開啟本ZIP中的`setup.sql`，全選貼入SQL Editor後按Run。可到Table Editor確認`seats`有48筆、`P-01`至`P-12`、`A-01`至`A-16`、`L-01`至`L-20`。
+3. 到Project Settings → API Keys取得**Publishable key**（通常為`sb_publishable_...`）與Project URL。在本ZIP的`config.js`填入：
 
 ```js
 window.APP_CONFIG = {
-  SUPABASE_URL: "https://你的專案代碼.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_你的公開金鑰"
+  SUPABASE_URL: 'https://YOUR-PROJECT.supabase.co',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_...' // 公開金鑰
 };
 ```
 
-儲存後提交到 GitHub。這個檔案是前端設定，不是私密金鑰保管處。
+4. 在Supabase → Authentication → Providers（Email）確認Email登入開啟；若要求Email驗證，要先驗證才可登入。
+5. 啟動網站，按右上角「登入／註冊」建立測試帳號。
+6. 要設定館員管理權限，**由Supabase擁有者**在SQL Editor手動執行（先確認帳號已註冊）：
 
-## 3. 建立資料庫
+```sql
+update public.profiles set role='admin' where email='your-email@example.com';
+```
 
-1. 在 Supabase 專案左側選 **SQL Editor**。
-2. 開啟本 ZIP 的 `setup.sql`，全選複製。
-3. 貼到 SQL Editor，按 **Run**。
-4. 執行完成後，至 **Table Editor** 確認有 `profiles`、`seats`、`reservations`、`reports` 四張表；`seats` 預設 48 筆，分成 P-01～P-16、A-01～A-16、L-01～L-16。
-5. 若需註冊後立即登入，至 **Authentication → Providers → Email** 確認 Email provider 啟用。若開啟 Confirm email，註冊者需先完成信箱驗證。
+登出再登入即可切換館員角色，**不能由一般學生在網站上自行取得管理權限。**
 
-## 4. 設定館員管理員
+### 正式連線與演示差異
 
-1. 先用網站註冊你自己的帳號。
-2. 在 Supabase → **Table Editor → profiles** 找到該帳號資料。
-3. 將 `role` 從 `student` 改為 `admin`，儲存。
-4. 重新登入網站，頂端會出現「館員管理」頁籤。
+| 功能 | 本機展示 | Supabase正式連線 |
+|---|---|---|
+| 2.5D座位場景、物品與視角 | 保留 | 保留 |
+| 座位篩選／智慧推薦 | JS | JS，搭配真實預約狀態 |
+| 登入註冊 | 模擬學生 | Supabase Auth |
+| 座位預約／退訂／報到／暫離／回座 | 本機記憶體 | Supabase RPC + 唯一約束 |
+| 一鍵換位 | 本機記憶體 | 單一資料庫交易RPC |
+| 異常回報與館員處理 | 模擬資料 | Supabase reports / 權限檢查RPC |
+| 館員維護鎖定／人工攝影機模擬 | 任意操作 | **管理員限定**並寫入資料庫 |
+| 四種核心情境 | 直接修改本機資料 | **僅本機預覽，不修改正式資料**；按重設退出 |
+| 跨裝置狀態同步 | 無 | Realtime變更事件 + 30秒輪詢備援 |
+| 攝影機辨識 | 手動模擬 | 手動模擬，**沒有接真實影像或AI** |
 
-也可在 SQL Editor 執行 `setup.sql` 最後的範例 UPDATE，並將 Email 換成你的帳號。**不要讓一般使用者自行更新 profiles.role**；RLS 已禁止使用者修改角色。
+**權限與隱私**：學生不能讀取其他預約者的身分資料。`get_seat_snapshot`只輸出某日期/時段哪些座位被預約、其到席狀態與是否為本人；館員權限在資料庫RPC進行檢查，前端只放可公開的Publishable Key，**絕不可放`service_role`或`sb_secret_`**。本版使用SQL RPC保護管理寫入，**不需要額外部署Edge Functions**。
 
-## 5. 發布到 GitHub Pages
+> 警告：這是研究／展示性系統的雲端原型。任何登入者可提交異常報告並觸發座位凍結，正式對外上線前仍應加上防濫用限制、管理審核策略、隱私政策與操作稽核。此版本沒有宣稱是圖書館正式營運產品。
 
-1. 將 ZIP 解壓後的所有檔案上傳到 GitHub repository 根目錄（不要只上傳外層資料夾）。
-2. 確認 repository 根目錄直接看得到 `index.html`、`app.js`、`style.css`、`config.js`。
-3. GitHub repository → **Settings → Pages**。
-4. 在 **Build and deployment** 選 **Deploy from a branch**。
-5. Branch 選 `main`（或你的主要分支），資料夾選 `/(root)`，按 Save。
-6. 等待 GitHub Pages 部署完成，使用 GitHub 顯示的網址開啟。所有站內資源採相對路徑 `./`，支援 `https://帳號.github.io/儲存庫名稱/` 子路徑。
+## 4. 發布GitHub Pages（不需建置）
 
-更新網站時，只要提交修改後的檔案，GitHub Pages 會自動重新發布。
+1. 將ZIP**解壓縮後檔案**直接上傳到GitHub repository根目錄，確認根目錄可看到`index.html`、`config.js`、`setup.sql`、`js/`、`style.css`。
+2. 到GitHub repository → Settings → Pages → Build and deployment。
+3. Source選Deploy from a branch，分支選`main`、資料夾選`/(root)`，儲存。
+4. 用GitHub提供的網址開啟。所有本地CSS/JS都是`./`相對路徑，支援`https://帳號.github.io/儲存庫/`子路徑。
+5. 如果填入Supabase，Authentication設定內可將GitHub Pages公開網址加入允許的Site URL / Redirect URLs（尤其是日後啟用OAuth或Magic Link時）。
 
-## 6. 功能操作與驗收
+## 5. 驗收方式
 
-### 學生端
-1. 開啟網站，確認三個空間及 48 個席位顯示。
-2. 註冊或登入。
-3. 選擇日期、時段及空間，點擊綠色可預約座位，確認預約。
-4. 在另一個瀏覽器或無痕視窗開啟網站，選相同日期與時段，該席位應顯示為已預約且不能再點選。
-5. 到「我的預約」取消尚未開始的預約，回到座位總覽確認釋出。
-6. 登出後確認仍可瀏覽座位，但無法完成預約。
+- [ ] 首頁能切換3個不同模型，座位數為12/16/20；可切換3D相機及圖層。
+- [ ] 點座位會顯示右側詳細資訊、設備、偵測、推薦；拖曳不應觸發點擊。
+- [ ] 4個情境都能操作，人物/背包/書籍可獨立切換，異常後推薦席位。
+- [ ] 本機模式中可預約、報到、暫離、返回、回報、換位、館員解鎖、重置。
+- [ ] Supabase連線後學生無法使用館員功能；管理員可調整座位狀態與回報。
+- [ ] 兩台裝置使用同一日期/時段不能同時成功預約同一座位。
+- [ ] 一台裝置預約後另一台裝置刷新或等待同步可看到占用；無法讀出其他預約者Email。
+- [ ] 正式連線中使用情境模擬不會寫入資料庫，重設後返回雲端座位狀態。
+- [ ] GitHub Pages子路徑正常載入CSS與JS。
 
-### 館員端
-1. 依第 4 節將自己的帳號設為 admin，重新登入。
-2. 在「館員管理」測試座位暫停開放與解除維護。
-3. 學生登入後可在可預約座位的詳情視窗按「回報座位問題」送出文字回報；管理員可查看回報並標記結案。一般帳號不能讀取或修改管理資料。
+## 6. 實測範圍與已知限制
 
-### 部署檢查
-- [ ] `config.js` 已填入正確 Supabase URL / Publishable Key。
-- [ ] `setup.sql` 已完整執行，無 SQL 錯誤。
-- [ ] GitHub Pages 來源為主要分支的根目錄。
-- [ ] 網站網址包含 repository 子路徑時 CSS / JS 仍可載入。
-- [ ] 註冊、登入、登出正常。
-- [ ] 同時段重複預約會被資料庫拒絕。
-- [ ] 另一個瀏覽器可看到座位占用狀態更新。
-- [ ] 非管理員無法使用管理功能。
+已針對原生JS模組進行語法檢查，並在受限瀏覽器環境驗證2D備援顯示、三區切換、4個情境入口、座位選取、異常畫面、個人預約與館員模擬控制。**環境封鎖外部CDN，無法完整載入Three.js以實際檢驗WebGL畫面**；3D模型程式移植自原版並保留，但須在可連網的實際瀏覽器再確認渲染、效能與視角。未提供Supabase測試專案金鑰，**SQL/RPC、Auth、Realtime尚未實際連接雲端做端對端驗證**；正式上線前請依第5節驗收。
 
-## 7. 安全與權限設計
+其他限制：
+- 真正攝影機影像辨識**未實作，也不需要**；僅依手動模擬的三個偵測旗標判斷座位異常。
+- 原版學生預約歷史是兩筆硬編模擬資料；正式連線模式只顯示現有預約及本次分頁操作紀錄，沒有完整跨期歷史稽核報表。
+- 為避免洩漏他人身份，正式連線模式不會像原版硬編展示資料那樣在他人的座位詳細資訊中顯示學生姓名／學號。
+- 原始各畫面已改為原生JS DOM介面，仍保留視覺系統、核心元件與操作流程，但不是逐像素重建React JSX；在不同瀏覽器上會有些許字體／間距差異。
+- 正式連線需要可存取Supabase與外部CDN；WebGL失敗自動使用2D備援，這種情況下不能稱為3D完成測試。
 
-- 前端只持有 Supabase Publishable Key；沒有 service-role 或 secret key。
-- Supabase Auth 負責註冊、登入與 Session。
-- `profiles` 只允許本人讀取；角色只能由專案管理者在 Supabase 後台變更。
-- `seats` 可公開讀取；座位維護狀態僅管理員可更新。
-- `reservations` 只允許本人讀取與取消。前端不讀取其他人的預約紀錄。
-- `get_reserved_seat_ids(date,slot)` 是資料庫函式，只回傳該時段被占用的 seat UUID，不暴露預約者身分或其他預約欄位。
-- `book_seat(...)` 在資料庫端檢查登入、日期範圍、維護狀態與唯一性，避免同時搶位。
-- `reports` 允許登入者新增，僅管理員可讀取及更新。
-- Realtime 僅作為變更通知；收到通知後前端重新查詢受 RLS / RPC 保護的資料。
-
-## 8. 與原始 AI Studio 版本的差異
-
-原專案包含 React、Vite、Tailwind、lucide-react，以及以模擬資料驅動的 2.5D 場景、攝影機視覺偵測模擬、席位檢視抽屜、情境模擬、館員監控與學生紀錄等元件。本次依「無建置、可直接 GitHub Pages」要求，重做為原生網頁：
-
-- **保留並可實際使用**：三個自習空間、48 個座位、空位/已預約/維護狀態、日期與時段篩選、搜尋、Supabase 註冊登入、原子化預約、個人預約查詢/取消、跨瀏覽器占用同步、管理員維護鎖定、異常回報管理資料表。
-- **簡化**：座位視覺化由原本 2.5D 互動場景改為響應式座位格；設備資訊採簡化呈現；學生紀錄只呈現目前與未來預約。
-- **未移植**：原本的 AI 攝影機人/包/書辨識、即時視覺模擬控制、3D/2.5D 鏡頭、複雜推薦演算法、情境模擬與原始示範歷史紀錄。原始內容是前端 mock / 模擬資料，沒有實際攝影機或 AI 後端，故不以假資料假裝成真實偵測。
-- 沒有使用 Gemini API、Node.js server 或 Edge Function；一般登入由 Supabase Auth 處理，預約與權限驗證由 SQL RPC / RLS 執行，因此不需要部署 Edge Function，也不需要額外申請 API 金鑰。
-
-## 9. 已檢查與需上線後驗證
-
-**已在交付檔案層級檢查：**
-- 根目錄有 `index.html`，資源使用相對路徑。
-- 前端為原生 HTML/CSS/JS，無 npm / build 依賴。
-- 前端設定欄位與 Supabase 欄位名稱一致。
-- SQL 建立的表名、欄位、RPC 名稱與前端呼叫一致。
-- RLS 對學生預約資料採本人讀取；占用狀態走只回傳 seat UUID 的 RPC。
-- 預約唯一性由資料庫約束與 RPC 保證；管理員操作由 `is_admin()` 在資料庫端驗證。
-- 不包含 Edge Function，也不需要服務端私密金鑰。
-
-**必須在你的 Supabase / GitHub 環境驗證：**
-- SQL Editor 執行結果、Auth Email 設定與郵件驗證流程。
-- `config.js` 的專案 URL / Publishable Key 是否正確。
-- 管理員角色提升後是否可正常顯示館員管理頁籤。
-- GitHub Pages 實際部署、瀏覽器跨來源請求及 Realtime 連線。
-- 跨使用者的預約資料不會透過一般查詢洩漏；由於預約明細採本人 RLS，其他使用者的 Realtime row event 可能無法送達。前端另有每 20 秒刷新一次的占用狀態備援；跨帳號驗收通常會在 20 秒內更新，亦可手動重新整理。
-
-## 10. 注意事項
-
-本系統目前以每個日期、時段作為預約單位；不支援自訂起訖時間。取消按鈕只顯示未來或今天的預約；資料庫僅允許取消尚未過去日期的紀錄。若要公開給大量使用者使用，請在正式啟用前自行設定 Supabase 專案的備份、使用量與 Auth 郵件政策。
+以上以原版AI Studio ZIP中的功能及元件命名為基準，不沿用先前簡化網站的平面席位版面。
